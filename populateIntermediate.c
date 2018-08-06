@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <parseMap.h>
-#include <hashTable.h>
+#include <hashTableO1.h>
 
 #include "populateIntermediate.h"
 
@@ -82,25 +82,24 @@ int hydrate_relation ( struct Relation *rel, struct El *curr_el ) {
 }
 
 void element_handler ( void *user_data, struct ParserCtx *parser_ctx, char tag_open ) {
-    struct hashTable *ht = (struct hashTable *) user_data;
-    struct hashTableEntry *hte = NULL;
+    hashTable_t *ht = (hashTable_t *) user_data;
     struct El *sig_el = NULL, *curr_el = NULL;
-    void *prepared_item = NULL;
+    void *prepared_item = NULL, *value = NULL;
     int rc = HT_FAILURE;
 
     if ( tag_open ) {
         curr_el = &parser_ctx->els[parser_ctx->size - 1];
 
         if ( ( sig_el = get_significant_el ( parser_ctx ) ) ) {
-            if ( ( hte = hashTable_find_entry ( ht, sig_el->id ) ) ) {
-                if ( ( (enum itemType *) hte->v )[0] == ITEM_NODE ) {
-                    hydrate_node ( (struct Node *) hte->v, curr_el );
-                } else if ( ( (enum itemType *) hte->v )[0] == ITEM_WAY ) {
-                    hydrate_way ( (struct Way *) hte->v, curr_el );
-                } else if ( ( (enum itemType *) hte->v )[0] == ITEM_RELATION ) {
-                    hydrate_relation ( (struct Relation *) hte->v, curr_el );
+            if ( ( value = hashTable_find_entry_value ( ht, sig_el->id ) ) ) {
+                if ( ( (enum itemType *) value )[0] == ITEM_NODE ) {
+                    hydrate_node ( (struct Node *) value, curr_el );
+                } else if ( ( (enum itemType *) value )[0] == ITEM_WAY ) {
+                    hydrate_way ( (struct Way *) value, curr_el );
+                } else if ( ( (enum itemType *) value )[0] == ITEM_RELATION ) {
+                    hydrate_relation ( (struct Relation *) value, curr_el );
                 } else {
-                    fprintf ( stderr, "Unknown type: %d\n", (enum itemType) hte->v );
+                    fprintf ( stderr, "Unknown type: %d\n", (enum itemType) value );
                 }
             } else {
                 if ( ( prepared_item = prepare_for_hashTable ( sig_el ) ) ) {

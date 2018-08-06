@@ -1,28 +1,30 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <hashTable.h>
+#include <hashTableO1.h>
 #include <parseMap.h>
 
 #include "populateIntermediate.h"
-#include "populateNgramsLocations.h"
+//#include "populateNgramsLocations.h"
 
 int main ( int argc, char **argv ) {
     int rc = EXIT_FAILURE;
-    char *input_filename = NULL, *output_filename = NULL;
+    char *input_filename = NULL;
+    //char *input_filename = NULL, *output_filename = NULL;
     handler elm_handler = element_handler;
-    struct hashTable *intermediate = NULL, *ngrams_locations = NULL;
+    hashTable_t *intermediate = NULL;
+    //struct hashTable *intermediate = NULL, *ngrams_locations = NULL;
     //size_t i = 0;
 
-    if ( argc < 3 ) {
-        fprintf ( stderr, "Usage: %s infile outfile\n", argv[0] );
+    if ( argc < 2 ) {
+        fprintf ( stderr, "Usage: %s infile\n", argv[0] );
         goto over;
     }
 
     input_filename = argv[1];
-    output_filename = argv[2];
+    //output_filename = argv[2];
 
-    if ( ( intermediate = calloc ( 1, sizeof ( struct hashTable ) ) ) == NULL ) {
+    if ( ( intermediate = hashTable_create ( 65535 ) ) == NULL ) {
         fprintf ( stderr, "Cannot allocate memory for hashTable: %s\n", strerror ( errno ) );
         goto over;
     }
@@ -35,7 +37,7 @@ int main ( int argc, char **argv ) {
         goto over;
     }
 
-    if ( ( ngrams_locations = populate_ngrams_locations ( intermediate ) ) == NULL ) {
+    /*if ( ( ngrams_locations = populate_ngrams_locations ( intermediate ) ) == NULL ) {
         fprintf ( stderr, "Cannot populate ngrams -> locations hash table: %s\n", strerror ( errno ) );
         goto over;
     }
@@ -48,7 +50,7 @@ int main ( int argc, char **argv ) {
     if ( serialise_ngrams_locations ( ngrams_locations, output_filename ) == EXIT_FAILURE ) {
         fprintf ( stderr, "Cannot write ngrams -> locations hash table to output file: %s\n", strerror ( errno ) );
         goto over;
-    }
+    }*/
 
     /*if ( ngrams_locations )
         hashTable_free ( ngrams_locations );
@@ -74,8 +76,8 @@ int main ( int argc, char **argv ) {
 
     rc = EXIT_SUCCESS;
 over:
-    if ( ngrams_locations )
-        hashTable_free ( ngrams_locations );
+    //if ( ngrams_locations )
+    //    hashTable_free ( ngrams_locations );
 
     if ( intermediate )
         hashTable_free ( intermediate );

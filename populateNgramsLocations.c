@@ -1,11 +1,11 @@
 #include <string.h>
 #include <stdio.h>
-#include <hashTable.h>
+#include <hashTableO1.h>
 
 #include "populateIntermediate.h"
 #include "populateNgramsLocations.h"
 
-int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lon_list, struct hashTable *ngrams_locations ) {
+int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lon_list, hashTable_t *ngrams_locations ) {
     int rc = EXIT_FAILURE;
     int _rc = HT_FAILURE;
 
@@ -19,11 +19,9 @@ int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lo
         struct LatLongList *lll = NULL;
         size_t i = 0, j = 0, realSize = 0;;
 
-        if ( ( entry = hashTable_find_entry ( ngrams_locations, name ) ) == NULL ) {
+        if ( ( lll = (struct LatLongList *) hashTable_find_entry_value ( ngrams_locations, name ) ) == NULL ) {
             goto over;
         }
-
-        lll = (struct LatLongList *) entry->v;
 
         if ( ( lll->lat_lon = realloc ( lll->lat_lon, ( lll->size + lat_lon_list->size ) * sizeof ( struct LatLong ) ) ) == NULL ) {
             goto over;
@@ -71,7 +69,7 @@ over:
     return rc;
 }
 
-int flatten_lat_lon ( void *hashTable_value, struct hashTable *intermediate, struct LatLongList *lat_lon_list ) {
+int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, struct LatLongList *lat_lon_list ) {
     if ( ( (enum itemType *) hashTable_value )[0] == ITEM_NODE ) {
         struct Node *node = (struct Node *) hashTable_value;
 
@@ -87,10 +85,10 @@ int flatten_lat_lon ( void *hashTable_value, struct hashTable *intermediate, str
         size_t i = 0;
 
         for ( i = 0; i < way->size; i++ ) {
-            struct hashTableEntry *entry = NULL;
+            void *value = NULL;
 
-            if ( ( entry = hashTable_find_entry ( intermediate, way->node_refs[i] ) ) ) {
-                if ( flatten_lat_lon ( entry->v, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
+            if ( ( value = hashTable_find_entry_value ( intermediate, way->node_refs[i] ) ) ) {
+                if ( flatten_lat_lon ( value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
                     fprintf ( stderr, "Failed to flatten node entry in way: %s\n", way->node_refs[i] );
                 }
             }
@@ -100,10 +98,10 @@ int flatten_lat_lon ( void *hashTable_value, struct hashTable *intermediate, str
         size_t i = 0;
 
         for ( i = 0; i < relation->size; i++ ) {
-            struct hashTableEntry *entry = NULL;
+            void *value = NULL;
 
-            if ( ( entry = hashTable_find_entry ( intermediate, relation->member_refs[i] ) ) ) {
-                if ( flatten_lat_lon ( entry->v, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
+            if ( ( value = hashTable_find_entry_value ( intermediate, relation->member_refs[i] ) ) ) {
+                if ( flatten_lat_lon ( value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
                     fprintf ( stderr, "Failed to flatten member entry in relation: %s\n", relation->member_refs[i] );
                 }
             }
@@ -115,7 +113,7 @@ int flatten_lat_lon ( void *hashTable_value, struct hashTable *intermediate, str
     return EXIT_SUCCESS;
 }
 
-int flatten_into_hashTable ( struct hashTable *ngrams_locations, const char *ngram, void *hashTable_value, struct hashTable *intermediate ) {
+int flatten_into_hashTable ( hashTable_t *ngrams_locations, const char *ngram, void *hashTable_value, hashTable_t *intermediate ) {
     struct LatLongList *lat_lon_list = NULL;
 
     if ( ( lat_lon_list = calloc ( 1, sizeof ( struct LatLongList ) ) ) == NULL )
@@ -135,50 +133,49 @@ int flatten_into_hashTable ( struct hashTable *ngrams_locations, const char *ngr
     return add_lat_lon_list_to_hashTable ( ngram, lat_lon_list, ngrams_locations );
 }
 
-struct hashTable *populate_ngrams_locations ( struct hashTable *intermediate ) {
-    struct hashTable *ngrams_locations = NULL, *_ht = NULL;
+hashTable_t *populate_ngrams_locations ( hashTable_t *intermediate ) {
+    hashTable_t *ngrams_locations = NULL;
     size_t i = 0;
 
-    if ( ( _ht = calloc ( 1, sizeof ( struct hashTable ) ) ) == NULL ) {
+    if ( ( ngrams_locations = calloc ( 1, sizeof ( hashTable_t ) ) ) == NULL ) {
         fprintf ( stderr, "Cannot allocate memory for ngrams -> locations hashTable\n" );
-        goto over;
+        return NULL;
     }
 
     for ( i = 0; i < intermediate->size; i++ ) {
-        struct hashTableEntry *entry = &intermediate->entries[i];
+        hashTable_entry_t *entry = intermediate->entries[i];
 
-        if ( ( (enum itemType *) entry->v )[0] == ITEM_NODE ) {
-            struct Node *node = (struct Node *) entry->v;
+        while ( entry ) {
+            if ( ( (enum itemType *) entry->value )[0] == ITEM_NODE ) {
+                struct Node *node = (struct Node *) entry->value;
 
-            if ( node->name ) {
-                flatten_into_hashTable ( _ht, (const char*) node->name, entry->v, intermediate );
+                if ( node->name ) {
+                    flatten_into_hashTable ( ngrams_locations, (const char*) node->name, entry->value, intermediate );
+                }
+            } else if ( ( (enum itemType *) entry->value )[0] == ITEM_WAY ) {
+                struct Way *way = (struct Way *) entry->value;
+
+                if ( way->name ) {
+                    flatten_into_hashTable ( ngrams_locations, (const char*) way->name, entry->value, intermediate );
+                }
+            } else if ( ( (enum itemType *) entry->value )[0] == ITEM_RELATION ) {
+                struct Relation *relation = (struct Relation *) entry->value;
+
+                if ( relation->name ) {
+                    flatten_into_hashTable ( ngrams_locations, (const char*) relation->name, entry->value, intermediate );
+                }
+            } else {
+                fprintf ( stderr, "Unknown type: %d\n", (enum itemType) entry->value );
             }
-        } else if ( ( (enum itemType *) entry->v )[0] == ITEM_WAY ) {
-            struct Way *way = (struct Way *) entry->v;
 
-            if ( way->name ) {
-                flatten_into_hashTable ( _ht, (const char*) way->name, entry->v, intermediate );
-            }
-        } else if ( ( (enum itemType *) entry->v )[0] == ITEM_RELATION ) {
-            struct Relation *relation = (struct Relation *) entry->v;
-
-            if ( relation->name ) {
-                flatten_into_hashTable ( _ht, (const char*) relation->name, entry->v, intermediate );
-            }
-        } else {
-            fprintf ( stderr, "Unknown type: %d\n", (enum itemType) entry->v );
+            entry = entry->next;
         }
     }
-
-    ngrams_locations = _ht;
-over:
-    if ( _ht && _ht != ngrams_locations )
-        hashTable_free ( _ht );
 
     return ngrams_locations;
 }
 
-int serialise_ngrams_locations ( struct hashTable *ngrams_locations, const char *filename ) {
+int serialise_ngrams_locations ( hashTable_t *ngrams_locations, const char *filename ) {
     int rc = EXIT_FAILURE;
     FILE *fp = NULL;
     size_t i = 0, j = 0;
@@ -194,8 +191,8 @@ int serialise_ngrams_locations ( struct hashTable *ngrams_locations, const char 
     }
 
     for ( i = 0; i < ngrams_locations->size; i++ ) {
-        struct hashTableEntry *entry = &ngrams_locations->entries[i];
-        struct LatLongList *lll = (struct LatLongList *) entry->v;
+        hashTable_entry_t *entry = ngrams_locations->entries[i];
+        struct LatLongList *lll = (struct LatLongList *) entry->value;
 
         if ( fwrite ( &entry->k, sizeof ( uint32_t ), 1, fp ) != 1 ) {
             fprintf ( stderr, "Cannot write entry %d key to file\n", (int) i );
