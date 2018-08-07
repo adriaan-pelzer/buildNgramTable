@@ -10,26 +10,26 @@ enum itemType {
     ITEM_RELATION
 };
 
-struct Node {
+typedef struct Node {
     enum itemType type;
     long double lat;
     long double lon;
     char *name;
-};
+} Node_t;
 
-struct Way {
+typedef struct Way {
     enum itemType type;
     size_t size;
     char **node_refs;
     char *name;
-};
+} Way_t;
 
-struct Relation {
+typedef struct Relation {
     enum itemType type;
     size_t size;
     char **member_refs;
     char *name;
-};
+} Relation_t;
 
 void element_handler ( void *user_data, struct ParserCtx *parser_ctx, char tag_open );
 

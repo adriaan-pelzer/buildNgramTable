@@ -1,11 +1,12 @@
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 #include <hashTableO1.h>
 
 #include "populateIntermediate.h"
 #include "populateNgramsLocations.h"
 
-int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lon_list, hashTable_t *ngrams_locations ) {
+int add_lat_lon_list_to_hashTable ( const char *name, LatLongList_t* lat_lon_list, hashTable_t *ngrams_locations ) {
     int rc = EXIT_FAILURE;
     int _rc = HT_FAILURE;
 
@@ -15,15 +16,14 @@ int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lo
     }
     
     if ( _rc == HT_EXISTS ) {
-        struct hashTableEntry *entry = NULL;
-        struct LatLongList *lll = NULL;
+        LatLongList_t *lll = NULL;
         size_t i = 0, j = 0, realSize = 0;;
 
-        if ( ( lll = (struct LatLongList *) hashTable_find_entry_value ( ngrams_locations, name ) ) == NULL ) {
+        if ( ( lll = (LatLongList_t *) hashTable_find_entry_value ( ngrams_locations, name ) ) == NULL ) {
             goto over;
         }
 
-        if ( ( lll->lat_lon = realloc ( lll->lat_lon, ( lll->size + lat_lon_list->size ) * sizeof ( struct LatLong ) ) ) == NULL ) {
+        if ( ( lll->lat_lon = realloc ( lll->lat_lon, ( lll->size + lat_lon_list->size ) * sizeof ( LatLong_t ) ) ) == NULL ) {
             goto over;
         }
 
@@ -46,7 +46,7 @@ int add_lat_lon_list_to_hashTable ( const char *name, struct LatLongList* lat_lo
             }
         }
 
-        if ( ( lll->lat_lon = realloc ( lll->lat_lon, realSize * sizeof ( struct LatLong ) ) ) == NULL ) {
+        if ( ( lll->lat_lon = realloc ( lll->lat_lon, realSize * sizeof ( LatLong_t ) ) ) == NULL ) {
             goto over;
         }
 
@@ -69,11 +69,11 @@ over:
     return rc;
 }
 
-int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, struct LatLongList *lat_lon_list ) {
+int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongList_t *lat_lon_list ) {
     if ( ( (enum itemType *) hashTable_value )[0] == ITEM_NODE ) {
-        struct Node *node = (struct Node *) hashTable_value;
+        Node_t *node = (Node_t *) hashTable_value;
 
-        if ( ( lat_lon_list->lat_lon = realloc ( lat_lon_list->lat_lon, ( lat_lon_list->size + 1 ) * sizeof ( struct LatLong ) ) ) == NULL ) {
+        if ( ( lat_lon_list->lat_lon = realloc ( lat_lon_list->lat_lon, ( lat_lon_list->size + 1 ) * sizeof ( LatLong_t ) ) ) == NULL ) {
             return EXIT_FAILURE;
         }
 
@@ -81,7 +81,7 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, struct L
         lat_lon_list->lat_lon[lat_lon_list->size].lon = node->lon;
         lat_lon_list->size++;
     } else if ( ( (enum itemType *) hashTable_value )[0] == ITEM_WAY ) {
-        struct Way *way = (struct Way *) hashTable_value;
+        Way_t *way = (Way_t *) hashTable_value;
         size_t i = 0;
 
         for ( i = 0; i < way->size; i++ ) {
@@ -94,7 +94,7 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, struct L
             }
         }
     } else if ( ( (enum itemType *) hashTable_value )[0] == ITEM_RELATION ) {
-        struct Relation *relation = (struct Relation *) hashTable_value;
+        Relation_t *relation = (Relation_t *) hashTable_value;
         size_t i = 0;
 
         for ( i = 0; i < relation->size; i++ ) {
@@ -114,9 +114,9 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, struct L
 }
 
 int flatten_into_hashTable ( hashTable_t *ngrams_locations, const char *ngram, void *hashTable_value, hashTable_t *intermediate ) {
-    struct LatLongList *lat_lon_list = NULL;
+    LatLongList_t *lat_lon_list = NULL;
 
-    if ( ( lat_lon_list = calloc ( 1, sizeof ( struct LatLongList ) ) ) == NULL )
+    if ( ( lat_lon_list = calloc ( 1, sizeof ( LatLongList_t ) ) ) == NULL )
         return EXIT_FAILURE;
 
     if ( flatten_lat_lon ( hashTable_value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
@@ -137,8 +137,8 @@ hashTable_t *populate_ngrams_locations ( hashTable_t *intermediate ) {
     hashTable_t *ngrams_locations = NULL;
     size_t i = 0;
 
-    if ( ( ngrams_locations = calloc ( 1, sizeof ( hashTable_t ) ) ) == NULL ) {
-        fprintf ( stderr, "Cannot allocate memory for ngrams -> locations hashTable\n" );
+    if ( ( ngrams_locations = hashTable_create ( NGRAMS_LOCATIONS_HT_SIZE ) ) == NULL ) {
+        fprintf ( stderr, "Cannot create ngrams -> locations hashTable\n" );
         return NULL;
     }
 
@@ -147,23 +147,20 @@ hashTable_t *populate_ngrams_locations ( hashTable_t *intermediate ) {
 
         while ( entry ) {
             if ( ( (enum itemType *) entry->value )[0] == ITEM_NODE ) {
-                struct Node *node = (struct Node *) entry->value;
+                Node_t *node = (Node_t *) entry->value;
 
-                if ( node->name ) {
+                if ( node->name )
                     flatten_into_hashTable ( ngrams_locations, (const char*) node->name, entry->value, intermediate );
-                }
             } else if ( ( (enum itemType *) entry->value )[0] == ITEM_WAY ) {
-                struct Way *way = (struct Way *) entry->value;
+                Way_t *way = (Way_t *) entry->value;
 
-                if ( way->name ) {
+                if ( way->name )
                     flatten_into_hashTable ( ngrams_locations, (const char*) way->name, entry->value, intermediate );
-                }
             } else if ( ( (enum itemType *) entry->value )[0] == ITEM_RELATION ) {
-                struct Relation *relation = (struct Relation *) entry->value;
+                Relation_t *relation = (Relation_t *) entry->value;
 
-                if ( relation->name ) {
+                if ( relation->name )
                     flatten_into_hashTable ( ngrams_locations, (const char*) relation->name, entry->value, intermediate );
-                }
             } else {
                 fprintf ( stderr, "Unknown type: %d\n", (enum itemType) entry->value );
             }
@@ -192,28 +189,39 @@ int serialise_ngrams_locations ( hashTable_t *ngrams_locations, const char *file
 
     for ( i = 0; i < ngrams_locations->size; i++ ) {
         hashTable_entry_t *entry = ngrams_locations->entries[i];
-        struct LatLongList *lll = (struct LatLongList *) entry->value;
 
-        if ( fwrite ( &entry->k, sizeof ( uint32_t ), 1, fp ) != 1 ) {
-            fprintf ( stderr, "Cannot write entry %d key to file\n", (int) i );
-            goto over;
-        }
+        while ( entry ) {
+            LatLongList_t *lll = (LatLongList_t *) entry->value;
+            size_t key_len = strlen ( entry->key );
 
-        if ( fwrite ( &lll->size, sizeof ( size_t ), 1, fp ) != 1 ) {
-            fprintf ( stderr, "Cannot write entry %d size to file\n", (int) i );
-            goto over;
-        }
-
-        for ( j = 0; j < lll->size; j++ ) {
-            if ( fwrite ( &lll->lat_lon[j].lat, sizeof ( long double ), 1, fp ) != 1 ) {
-                fprintf ( stderr, "Cannot write entry %d point %d latitude to file\n", (int) i, (int) j );
+            if ( fwrite ( &key_len, sizeof ( size_t ), 1, fp ) != 1 ) {
+                fprintf ( stderr, "Cannot write entry %d key length (%d) to file\n", (int) i, (int) key_len );
                 goto over;
             }
 
-            if ( fwrite ( &lll->lat_lon[j].lon, sizeof ( long double ), 1, fp ) != 1 ) {
-                fprintf ( stderr, "Cannot write entry %d point %d longitude to file\n", (int) i, (int) j );
+            if ( fwrite ( entry->key, strlen ( entry->key ), 1, fp ) != 1 ) {
+                fprintf ( stderr, "Cannot write entry %d key (%s) to file\n", (int) i, entry->key );
                 goto over;
             }
+
+            if ( fwrite ( &lll->size, sizeof ( size_t ), 1, fp ) != 1 ) {
+                fprintf ( stderr, "Cannot write entry %d size (%d) to file\n", (int) i, (int) lll->size );
+                goto over;
+            }
+
+            for ( j = 0; j < lll->size; j++ ) {
+                if ( fwrite ( &lll->lat_lon[j].lat, sizeof ( long double ), 1, fp ) != 1 ) {
+                    fprintf ( stderr, "Cannot write entry %d point %d latitude (%lf) to file\n", (int) i, (int) j, (double) lll->lat_lon[j].lat );
+                    goto over;
+                }
+
+                if ( fwrite ( &lll->lat_lon[j].lon, sizeof ( long double ), 1, fp ) != 1 ) {
+                    fprintf ( stderr, "Cannot write entry %d point %d longitude (%lf) to file\n", (int) i, (int) j, (double) lll->lat_lon[j].lon );
+                    goto over;
+                }
+            }
+
+            entry = entry->next;
         }
     }
 
@@ -225,15 +233,11 @@ over:
     return rc;
 }
 
-struct hashTable *deserialise_ngrams_locations ( const char *filename ) {
-    struct hashTable *ngrams_locations = NULL, *_ht = NULL;
+hashTable_t *deserialise_ngrams_locations ( const char *filename ) {
+    hashTable_t *ngrams_locations = NULL, *_ht = NULL;
+    LatLongList_t *lat_lon_list = NULL;
     FILE *fp = NULL;
-    size_t i = 0, j = 0, tableSize = 0;
-
-    if ( ( _ht = calloc ( 1, sizeof ( struct hashTable ) ) ) == NULL ) {
-        fprintf ( stderr, "Cannot allocate memory for ngrams -> locations hashTable\n" );
-        goto over;
-    }
+    size_t i = 0, tableSize = 0;
 
     if ( ( fp = fopen ( filename, "r" ) ) == NULL ) {
         fprintf ( stderr, "Cannot open file %s for writing\n", filename );
@@ -245,70 +249,77 @@ struct hashTable *deserialise_ngrams_locations ( const char *filename ) {
         goto over;
     }
 
-    _ht->size = tableSize;
-
-    if ( ( _ht->entries = calloc ( 1, _ht->size * sizeof ( struct hashTableEntry ) ) ) == NULL ) {
-        fprintf ( stderr, "Cannot allocate memory for ngrams -> locations hashTable entries\n" );
+    if ( ( _ht = hashTable_create ( tableSize ) ) == NULL ) {
+        fprintf ( stderr, "Cannot create ngrams -> locations hashTable\n" );
         goto over;
     }
 
-    for ( i = 0; i < _ht->size; i++ ) {
-        struct LatLongList *lll = NULL;
-        size_t listSize = 0;
-        uint32_t key = 0;
+    while ( ! feof ( fp ) ) {
+        char *key = NULL;
+        size_t key_len = 0;
+        hashTable_rc_t hashTable_rc = HT_FAILURE;
 
-        if ( ( lll = calloc ( 1, sizeof ( struct LatLongList ) ) ) == NULL ) {
-            fprintf ( stderr, "Cannot allocate memory for entry %d locations list envelope\n", (int) i );
+        if ( fread ( &key_len, sizeof ( size_t ), 1, fp ) != 1 ) {
+            if ( feof ( fp ) )
+                break;
+            fprintf ( stderr, "Cannot read entry key length from file\n" );
             goto over;
         }
 
-        if ( fread ( &key, sizeof ( uint32_t ), 1, fp ) != 1 ) {
-            fprintf ( stderr, "Cannot read entry %d key from file\n", (int) i );
-            free ( lll );
+        if ( ( key = calloc ( 1, key_len + 1 ) ) == NULL ) {
+            fprintf ( stderr, "Cannot allocate memory for key\n" );
             goto over;
         }
 
-        if ( fread ( &listSize, sizeof ( size_t ), 1, fp ) != 1 ) {
-            fprintf ( stderr, "Cannot read entry %d size from file\n", (int) i );
-            free ( lll );
+        if ( fread ( key, key_len, 1, fp ) != 1 ) {
+            fprintf ( stderr, "Cannot read entry key from file\n" );
             goto over;
         }
 
-        lll->size = listSize;
-
-        if ( ( lll->lat_lon = calloc ( 1, lll->size * sizeof ( struct LatLong ) ) ) == NULL ) {
-            fprintf ( stderr, "Cannot allocate memory for entry %d locations list\n", (int) i );
-            free ( lll );
+        if ( ( lat_lon_list = calloc ( 1, sizeof ( LatLongList_t ) ) ) == NULL ) {
+            fprintf ( stderr, "Cannot allocate memory for lat/lon list\n" );
             goto over;
         }
 
-        for ( j = 0; j < lll->size; j++ ) {
-            long double lat = 0.0, lon = 0.0;
+        if ( fread ( &lat_lon_list->size, sizeof ( size_t ), 1, fp ) != 1 ) {
+            fprintf ( stderr, "Cannot read lat/lon list size from file\n" );
+            goto over;
+        }
 
-            if ( fread ( &lat, sizeof ( long double ), 1, fp ) != 1 ) {
-                fprintf ( stderr, "Cannot read entry %d point %d latitude from file\n", (int) i, (int) j );
-                free ( lll->lat_lon );
-                free ( lll );
+        if ( ( lat_lon_list->lat_lon = calloc ( 1, lat_lon_list->size * sizeof ( LatLong_t ) ) ) == NULL ) {
+            fprintf ( stderr, "Cannot allocate memory for lat/lon array: %s\n", strerror ( errno ) );
+            goto over;
+        }
+
+        for ( i = 0; i < lat_lon_list->size; i++ ) {
+            if ( fread ( &lat_lon_list->lat_lon[i].lat, sizeof ( long double ), 1, fp ) != 1 ) {
+                fprintf ( stderr, "Cannot read entry point %d latitude from file\n", (int) i );
                 goto over;
             }
 
-            if ( fread ( &lon, sizeof ( long double ), 1, fp ) != 1 ) {
-                fprintf ( stderr, "Cannot read entry %d point %d longitude from file\n", (int) i, (int) j );
-                free ( lll->lat_lon );
-                free ( lll );
+            if ( fread ( &lat_lon_list->lat_lon[i].lon, sizeof ( long double ), 1, fp ) != 1 ) {
+                fprintf ( stderr, "Cannot read entry point %d longitude from file\n", (int) i );
                 goto over;
             }
-
-            lll->lat_lon[j].lat = lat;
-            lll->lat_lon[j].lon = lon;
         }
 
-        _ht->entries[i].k = key;
-        _ht->entries[i].v = (void *) lll;
+        if ( ( hashTable_rc = hashTable_add_entry ( _ht, (const char *) key, (void *) lat_lon_list ) ) != HT_SUCCESS ) {
+            fprintf ( stderr, "Cannot add entry to hash table: %d\n", (int) hashTable_rc );
+            goto over;
+        }
+
+        lat_lon_list = NULL;
+        free ( key );
     }
 
     ngrams_locations = _ht;
 over:
+    if ( lat_lon_list ) {
+        if ( lat_lon_list->lat_lon )
+            free ( lat_lon_list->lat_lon );
+        free ( lat_lon_list );
+    }
+
     if ( _ht && _ht != ngrams_locations )
         hashTable_free ( _ht );
 

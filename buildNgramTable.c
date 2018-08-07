@@ -5,24 +5,22 @@
 #include <parseMap.h>
 
 #include "populateIntermediate.h"
-//#include "populateNgramsLocations.h"
+#include "populateNgramsLocations.h"
 
 int main ( int argc, char **argv ) {
     int rc = EXIT_FAILURE;
-    char *input_filename = NULL;
-    //char *input_filename = NULL, *output_filename = NULL;
+    char *input_filename = NULL, *output_filename = NULL;
     handler elm_handler = element_handler;
-    hashTable_t *intermediate = NULL;
-    //struct hashTable *intermediate = NULL, *ngrams_locations = NULL;
+    hashTable_t *intermediate = NULL, *ngrams_locations = NULL;
     //size_t i = 0;
 
-    if ( argc < 2 ) {
-        fprintf ( stderr, "Usage: %s infile\n", argv[0] );
+    if ( argc < 3 ) {
+        fprintf ( stderr, "Usage: %s infile outfile\n", argv[0] );
         goto over;
     }
 
     input_filename = argv[1];
-    //output_filename = argv[2];
+    output_filename = argv[2];
 
     if ( ( intermediate = hashTable_create ( 65535 ) ) == NULL ) {
         fprintf ( stderr, "Cannot allocate memory for hashTable: %s\n", strerror ( errno ) );
@@ -37,7 +35,7 @@ int main ( int argc, char **argv ) {
         goto over;
     }
 
-    /*if ( ( ngrams_locations = populate_ngrams_locations ( intermediate ) ) == NULL ) {
+    if ( ( ngrams_locations = populate_ngrams_locations ( intermediate ) ) == NULL ) {
         fprintf ( stderr, "Cannot populate ngrams -> locations hash table: %s\n", strerror ( errno ) );
         goto over;
     }
@@ -50,7 +48,7 @@ int main ( int argc, char **argv ) {
     if ( serialise_ngrams_locations ( ngrams_locations, output_filename ) == EXIT_FAILURE ) {
         fprintf ( stderr, "Cannot write ngrams -> locations hash table to output file: %s\n", strerror ( errno ) );
         goto over;
-    }*/
+    }
 
     /*if ( ngrams_locations )
         hashTable_free ( ngrams_locations );
@@ -63,21 +61,30 @@ int main ( int argc, char **argv ) {
     }
 
     for ( i = 0; i < ngrams_locations->size; i++ ) {
-        struct hashTableEntry *entry = &ngrams_locations->entries[i];
-        struct LatLongList *lat_lon_list = (struct LatLongList *) entry->v;
-        size_t j = 0;
+        hashTable_entry_t *entry = ngrams_locations->entries[i];
 
-        printf ( "%d. %s:\n", (int) i, lat_lon_list->ngram );
-        for ( j = 0; j < lat_lon_list->size; j++ ) {
-            printf ( "%lf,%lf\n", (double) lat_lon_list->lat_lon[j].lat, (double) lat_lon_list->lat_lon[j].lon );
+        printf ( "%d >>>\n", (int) i );
+
+        while ( entry ) {
+            LatLongList_t *lll = (LatLongList_t *) entry->value;
+            size_t j = 0;
+
+            printf ( "%s\n", entry->key );
+
+            for ( j = 0; j < lll->size; j++ )
+                printf ( "%lf,%lf\n", (double) lll->lat_lon[j].lat, (double) lll->lat_lon[j].lon );
+
+            printf ( "\n" );
+            entry = entry->next;
         }
+
         printf ( "\n" );
     }*/
 
     rc = EXIT_SUCCESS;
 over:
-    //if ( ngrams_locations )
-    //    hashTable_free ( ngrams_locations );
+    if ( ngrams_locations )
+        hashTable_free ( ngrams_locations );
 
     if ( intermediate )
         hashTable_free ( intermediate );

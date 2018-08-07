@@ -3,19 +3,21 @@
 #ifndef _POPULATE_NGRAMS_LOCATIONS_H_
 #define _POPULATE_NGRAMS_LOCATIONS_H_
 
-struct LatLong {
+#define NGRAMS_LOCATIONS_HT_SIZE 1024
+
+typedef struct LatLong {
     long double lat;
     long double lon;
-};
+} LatLong_t;
 
-struct LatLongList {
+typedef struct LatLongList {
     size_t size;
-    struct LatLong *lat_lon;
+    LatLong_t *lat_lon;
     char *ngram;
-};
+} LatLongList_t;
 
-struct hashTable *populate_ngrams_locations ( struct hashTable *intermediate );
-int serialise_ngrams_locations ( struct hashTable *ngrams_locations, const char *filename );
-struct hashTable *deserialise_ngrams_locations ( const char *filename );
+hashTable_t *populate_ngrams_locations ( hashTable_t *intermediate );
+int serialise_ngrams_locations ( hashTable_t *ngrams_locations, const char *filename );
+hashTable_t *deserialise_ngrams_locations ( const char *filename );
 
 #endif
