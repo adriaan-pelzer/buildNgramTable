@@ -1,4 +1,4 @@
-#include <hashTable.h>
+#include <hashTableO1.h>
 
 #ifndef _POPULATE_NGRAMS_LOCATIONS_H_
 #define _POPULATE_NGRAMS_LOCATIONS_H_
