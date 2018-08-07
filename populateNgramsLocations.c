@@ -6,6 +6,8 @@
 #include "populateIntermediate.h"
 #include "populateNgramsLocations.h"
 
+static size_t unique_ngrams = 0;
+
 int add_lat_lon_list_to_hashTable ( const char *name, LatLongList_t* lat_lon_list, hashTable_t *ngrams_locations ) {
     int rc = EXIT_FAILURE;
     int _rc = HT_FAILURE;
@@ -55,6 +57,10 @@ int add_lat_lon_list_to_hashTable ( const char *name, LatLongList_t* lat_lon_lis
         lll->size = realSize;
         free ( lat_lon_list->lat_lon );
         free ( lat_lon_list );
+    } else {
+        unique_ngrams++;
+        if ( unique_ngrams % 10000 == 0 )
+            printf ( "%d\n", (int) unique_ngrams );
     }
 
     //printf ( "Entry %s added successfully\n", name );

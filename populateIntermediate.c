@@ -5,6 +5,8 @@
 
 #include "populateIntermediate.h"
 
+static size_t unique_items = 0;
+
 struct El *get_significant_el ( struct ParserCtx *parser_ctx ) {
     size_t i = 0;
 
@@ -111,6 +113,10 @@ void element_handler ( void *user_data, struct ParserCtx *parser_ctx, char tag_o
                     if ( rc == HT_EXISTS ) {
                         fprintf ( stderr, "Entry already exists: %s\n", sig_el->id );
                         free ( prepared_item );
+                    } else {
+                        unique_items++;
+                        if ( unique_items % 1000000 == 0 )
+                            printf ( "Intermediate: %d\n", (int) unique_items );
                     }
                 }
             }

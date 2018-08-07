@@ -22,7 +22,7 @@ int main ( int argc, char **argv ) {
     input_filename = argv[1];
     output_filename = argv[2];
 
-    if ( ( intermediate = hashTable_create ( 65535 ) ) == NULL ) {
+    if ( ( intermediate = hashTable_create ( 134215680 ) ) == NULL ) {
         fprintf ( stderr, "Cannot allocate memory for hashTable: %s\n", strerror ( errno ) );
         goto over;
     }
