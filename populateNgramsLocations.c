@@ -6,6 +6,11 @@
 #include "populateIntermediate.h"
 #include "populateNgramsLocations.h"
 
+typedef struct ref_list {
+    const char *ref;
+    struct ref_list *next;
+} ref_list_t;
+
 static size_t unique_ngrams = 0;
 
 int add_lat_lon_list_to_hashTable ( const char *name, LatLongList_t* lat_lon_list, hashTable_t *ngrams_locations ) {
@@ -75,13 +80,47 @@ over:
     return rc;
 }
 
-int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongList_t *lat_lon_list ) {
+char is_in_list ( ref_list_t *ref_list, const char *ref ) {
+    ref_list_t *i = ref_list;
+
+    while ( i ) {
+        if ( ! strncmp ( ref, i->ref, strlen ( ref ) ) && strlen ( ref ) == strlen ( i->ref ) )
+            return 1;
+        i = i->next;
+    }
+
+    return 0;
+}
+
+ref_list_t *add_to_list ( ref_list_t *ref_list, const char *ref ) {
+    ref_list_t *rc = calloc ( 1, sizeof ( ref_list_t ) );
+
+    if ( rc ) {
+        rc->ref = strdup ( ref );
+        rc->next = ref_list;
+    }
+
+    return rc;
+}
+
+void ref_list_free ( ref_list_t *ref_list ) {
+    ref_list_t *next = NULL, *i = ref_list;
+
+    while ( i ) {
+        next = i->next;
+        free ( i );
+        i = next;
+    }
+}
+
+int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongList_t *lat_lon_list, ref_list_t *ref_list ) {
+    int rc = EXIT_FAILURE;
+
     if ( ( (enum itemType *) hashTable_value )[0] == ITEM_NODE ) {
         Node_t *node = (Node_t *) hashTable_value;
 
-        if ( ( lat_lon_list->lat_lon = realloc ( lat_lon_list->lat_lon, ( lat_lon_list->size + 1 ) * sizeof ( LatLong_t ) ) ) == NULL ) {
-            return EXIT_FAILURE;
-        }
+        if ( ( lat_lon_list->lat_lon = realloc ( lat_lon_list->lat_lon, ( lat_lon_list->size + 1 ) * sizeof ( LatLong_t ) ) ) == NULL )
+            goto over;
 
         lat_lon_list->lat_lon[lat_lon_list->size].lat = node->lat;
         lat_lon_list->lat_lon[lat_lon_list->size].lon = node->lon;
@@ -91,11 +130,13 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongL
         size_t i = 0;
 
         for ( i = 0; i < way->size; i++ ) {
-            void *value = NULL;
+            if ( ! is_in_list ( ref_list, way->node_refs[i] ) ) {
+                void *value = NULL;
 
-            if ( ( value = hashTable_find_entry_value ( intermediate, way->node_refs[i] ) ) ) {
-                if ( flatten_lat_lon ( value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
-                    fprintf ( stderr, "Failed to flatten node entry in way: %s\n", way->node_refs[i] );
+                if ( ( value = hashTable_find_entry_value ( intermediate, way->node_refs[i] ) ) ) {
+                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, way->node_refs[i] ) ) == EXIT_FAILURE ) {
+                        fprintf ( stderr, "Failed to flatten node entry in way: %s\n", way->node_refs[i] );
+                    }
                 }
             }
         }
@@ -104,19 +145,25 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongL
         size_t i = 0;
 
         for ( i = 0; i < relation->size; i++ ) {
-            void *value = NULL;
+            if ( ! is_in_list ( ref_list, way->node_refs[i] ) ) {
+                void *value = NULL;
 
-            if ( ( value = hashTable_find_entry_value ( intermediate, relation->member_refs[i] ) ) ) {
-                if ( flatten_lat_lon ( value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
-                    fprintf ( stderr, "Failed to flatten member entry in relation: %s\n", relation->member_refs[i] );
+                if ( ( value = hashTable_find_entry_value ( intermediate, relation->member_refs[i] ) ) ) {
+                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, relation->member_refs[i] ) ) == EXIT_FAILURE ) {
+                        fprintf ( stderr, "Failed to flatten member entry in relation: %s\n", relation->member_refs[i] );
+                    }
                 }
             }
         }
     } else {
         fprintf ( stderr, "Unknown relation member type: %d\n", ( (enum itemType *) hashTable_value )[0] );
-        return EXIT_FAILURE;
+        goto over;
     }
-    return EXIT_SUCCESS;
+
+    rc = EXIT_SUCCESS;
+over:
+    ref_list_free ( ref_list );
+    return rc;
 }
 
 int flatten_into_hashTable ( hashTable_t *ngrams_locations, const char *ngram, void *hashTable_value, hashTable_t *intermediate ) {
@@ -125,7 +172,7 @@ int flatten_into_hashTable ( hashTable_t *ngrams_locations, const char *ngram, v
     if ( ( lat_lon_list = calloc ( 1, sizeof ( LatLongList_t ) ) ) == NULL )
         return EXIT_FAILURE;
 
-    if ( flatten_lat_lon ( hashTable_value, intermediate, lat_lon_list ) == EXIT_FAILURE ) {
+    if ( flatten_lat_lon ( hashTable_value, intermediate, lat_lon_list, NULL ) == EXIT_FAILURE ) {
         if ( lat_lon_list ) {
             if ( lat_lon_list->lat_lon )
                 free ( lat_lon_list->lat_lon );
