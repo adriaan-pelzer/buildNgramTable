@@ -3,7 +3,8 @@
 #ifndef _POPULATE_NGRAMS_LOCATIONS_H_
 #define _POPULATE_NGRAMS_LOCATIONS_H_
 
-#define NGRAMS_LOCATIONS_HT_SIZE 2097120 * 2
+#define NGRAMS_LOCATIONS_HT_SIZE 4096
+//#define NGRAMS_LOCATIONS_HT_SIZE 2097120 * 2
 
 typedef struct LatLong {
     long double lat;

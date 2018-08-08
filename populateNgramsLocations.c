@@ -103,6 +103,25 @@ ref_list_t *add_to_list ( ref_list_t *ref_list, const char *ref ) {
     return rc;
 }
 
+ref_list_t *remove_from_list ( ref_list_t *ref_list, const char *ref ) {
+    ref_list_t *rc = ref_list, *prev = NULL, *next = NULL;
+
+    while ( rc ) {
+        next = rc->next;
+        if ( ! strncmp ( ref, rc->ref, strlen ( ref ) ) ) {
+            free ( rc );
+            if ( prev ) {
+                prev->next = next;
+                return ref_list;
+            }
+            return next; 
+        }
+        rc = next;
+    }
+
+    return ref_list;
+}
+
 void ref_list_free ( ref_list_t *ref_list ) {
     ref_list_t *next = NULL, *i = ref_list;
 
@@ -134,9 +153,10 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongL
                 void *value = NULL;
 
                 if ( ( value = hashTable_find_entry_value ( intermediate, way->node_refs[i] ) ) ) {
-                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, way->node_refs[i] ) ) == EXIT_FAILURE ) {
+                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, way->node_refs[i] ) ) == EXIT_FAILURE )
                         fprintf ( stderr, "Failed to flatten node entry in way: %s\n", way->node_refs[i] );
-                    }
+                    else
+                        remove_from_list ( ref_list, way->node_refs[i] );
                 }
             }
         }
@@ -145,13 +165,14 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongL
         size_t i = 0;
 
         for ( i = 0; i < relation->size; i++ ) {
-            if ( ! is_in_list ( ref_list, way->node_refs[i] ) ) {
+            if ( ! is_in_list ( ref_list, relation->member_refs[i] ) ) {
                 void *value = NULL;
 
                 if ( ( value = hashTable_find_entry_value ( intermediate, relation->member_refs[i] ) ) ) {
-                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, relation->member_refs[i] ) ) == EXIT_FAILURE ) {
+                    if ( flatten_lat_lon ( value, intermediate, lat_lon_list, add_to_list ( ref_list, relation->member_refs[i] ) ) == EXIT_FAILURE )
                         fprintf ( stderr, "Failed to flatten member entry in relation: %s\n", relation->member_refs[i] );
-                    }
+                    else
+                        remove_from_list ( ref_list, relation->member_refs[i] );
                 }
             }
         }
@@ -162,7 +183,7 @@ int flatten_lat_lon ( void *hashTable_value, hashTable_t *intermediate, LatLongL
 
     rc = EXIT_SUCCESS;
 over:
-    ref_list_free ( ref_list );
+    //ref_list_free ( ref_list );
     return rc;
 }
 
