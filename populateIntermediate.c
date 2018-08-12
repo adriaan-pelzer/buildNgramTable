@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <parseMap.h>
 #include <hashTableO1.h>
 
@@ -43,9 +44,17 @@ void *prepare_for_hashTable ( struct El *sig_el ) {
     return rc;
 }
 
+void toLowerCase ( char *str ) {
+    size_t i = 0;
+
+    for ( i = 0; i < strlen ( str ); i++ )
+        str[i] = (char) tolower ( (int) str[i] );
+}
+
 int hydrate_node ( struct Node *node, struct El *curr_el ) {
     if ( curr_el->name && node->name == NULL ) {
         node->name = strndup ( curr_el->name, strlen ( curr_el->name ) );
+        toLowerCase ( node->name );
         return EXIT_SUCCESS;
     }
     return EXIT_FAILURE;
@@ -54,6 +63,7 @@ int hydrate_node ( struct Node *node, struct El *curr_el ) {
 int hydrate_way ( struct Way *way, struct El *curr_el ) {
     if ( curr_el->name && way->name == NULL ) {
         way->name = strndup ( curr_el->name, strlen ( curr_el->name ) );
+        toLowerCase ( way->name );
         return EXIT_SUCCESS;
     }
 
@@ -70,6 +80,7 @@ int hydrate_way ( struct Way *way, struct El *curr_el ) {
 int hydrate_relation ( struct Relation *rel, struct El *curr_el ) {
     if ( curr_el->name && rel->name == NULL ) {
         rel->name = strndup ( curr_el->name, strlen ( curr_el->name ) );
+        toLowerCase ( rel->name );
         return EXIT_SUCCESS;
     }
 
