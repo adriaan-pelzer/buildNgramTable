@@ -7,10 +7,10 @@
 #include "populateIntermediate.h"
 #include "populateNgramsLocations.h"
 
-//#define INTERMEDIATE_HT_SIZE 134215680
-#define INTERMEDIATE_HT_SIZE 4096
-//#define NGRAMS_LOCATIONS_HT_SIZE 2097120 * 2
-#define NGRAMS_LOCATIONS_HT_SIZE 4096
+#define INTERMEDIATE_HT_SIZE 134215680
+//#define INTERMEDIATE_HT_SIZE 4096
+#define NGRAMS_LOCATIONS_HT_SIZE 2097120 * 2
+//#define NGRAMS_LOCATIONS_HT_SIZE 4096
 
 
 int main ( int argc, char **argv ) {
