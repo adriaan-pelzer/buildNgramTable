@@ -1,4 +1,4 @@
-CFLAGS=-g -Wall -fPIC -I/usr/local/include
+CFLAGS=-Wall -fPIC -I/usr/local/include
 LIBS=-L/usr/local/lib -lParseMap -lHashTableO1 -lNgramsLocations
 
 all: buildNgramTable
